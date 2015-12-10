@@ -12,10 +12,8 @@
 
 @interface KDCycleBannerView () <UIScrollViewDelegate, UIGestureRecognizerDelegate>
 
-@property (strong, nonatomic) UIScrollView *scrollView;
-@property (assign, nonatomic) BOOL scrollViewBounces;
 
-@property (strong, nonatomic) UIPageControl *pageControl;
+@property (assign, nonatomic) BOOL scrollViewBounces;
 
 @property (strong, nonatomic) NSArray *datasourceImages;
 @property (assign, nonatomic) NSUInteger currentSelectedPage;
@@ -54,11 +52,14 @@ static void *kContentImageViewObservationContext = &kContentImageViewObservation
 
     NSArray *subViews = self.subviews;
     [subViews makeObjectsPerformSelector:@selector(removeFromSuperview)];
+    if (_datasource) {
+        
     
     [self initialize];
     
     if (self.completeBlock) {
         self.completeBlock();
+    }
     }
 }
 
@@ -67,7 +68,7 @@ static void *kContentImageViewObservationContext = &kContentImageViewObservation
     
     [self initializeScrollView];
     [self initializePageControl];
-    
+    if(_datasource)
     [self loadData];
     
     // progress autoPlayTimeInterval
@@ -85,6 +86,7 @@ static void *kContentImageViewObservationContext = &kContentImageViewObservation
     _scrollView.showsHorizontalScrollIndicator = NO;
     _scrollView.showsVerticalScrollIndicator = NO;
     _scrollView.autoresizingMask = self.autoresizingMask;
+    _scrollView.scrollsToTop = NO;
     [self addSubview:_scrollView];
 }
 
@@ -93,6 +95,8 @@ static void *kContentImageViewObservationContext = &kContentImageViewObservation
     _pageControl = [[UIPageControl alloc] initWithFrame:pageControlFrame];
     _pageControl.center = CGPointMake(CGRectGetWidth(_scrollView.frame)*0.5, CGRectGetHeight(_scrollView.frame) - 12.);
     _pageControl.userInteractionEnabled = NO;
+    _pageControl.currentPageIndicatorTintColor = [UIColor grayColor];
+    _pageControl.pageIndicatorTintColor = [UIColor lightGrayColor];
     [self addSubview:_pageControl];
 }
 
@@ -148,9 +152,9 @@ static void *kContentImageViewObservationContext = &kContentImageViewObservation
             if ([self.datasource respondsToSelector:@selector(placeHolderImageOfBannerView:atIndex:)]) {
                 UIImage *placeHolderImage = [self.datasource placeHolderImageOfBannerView:self atIndex:i];
                 NSAssert(placeHolderImage != nil, @"placeHolderImage must not be nil");
-                [imageView setImageWithURL:[imageSource isKindOfClass:[NSString class]] ? [NSURL URLWithString:imageSource] : imageSource placeholderImage:placeHolderImage];
+                [imageView sd_setImageWithURL:[imageSource isKindOfClass:[NSString class]] ? [NSURL URLWithString:imageSource] : imageSource placeholderImage:placeHolderImage];
             }else {
-                [imageView setImageWithURL:[imageSource isKindOfClass:[NSString class]] ? [NSURL URLWithString:imageSource] : imageSource];
+                [imageView sd_setImageWithURL:[imageSource isKindOfClass:[NSString class]] ? [NSURL URLWithString:imageSource] : imageSource];
             }
             
         }
@@ -270,6 +274,16 @@ static void *kContentImageViewObservationContext = &kContentImageViewObservation
     }
     
     _pageControl.currentPage = page;
+}
+
+- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
+{
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(autoSwitchBannerView) object:nil];
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
+{
+    [self performSelector:@selector(autoSwitchBannerView) withObject:nil afterDelay:self.autoPlayTimeInterval];
 }
 
 #pragma mark - UIGestureRecognizerDelegate
